@@ -4,33 +4,6 @@ An offline, keyboard-driven AI refinement platform and developer workspace. Oper
 
 ---
 
-## Pitch & Presentation Guide
-
-This section outlines the core narrative and talking points for presenting LARP to judges and panelists.
-
-### The 30-Second Pitch (Stage Script)
-
-> "Every engineering team wants to leverage AI for prompt engineering and system design, but corporate security policies strictly forbid sending proprietary source code and confidential architecture to cloud APIs. Meanwhile, running raw local models produces unstructured, inconsistent answers.
-> 
-> LARP solves this by turning small local language models into an offline developer workbench. Disconnect your machine from Wi-Fi: LARP takes a single concept, enhances the prompt, generates a full functional specification, drafts an architecture blueprint, and exports production-ready `.cursorrules` and `SKILL.md` agent files directly to your repo in under 60 seconds. Zero API costs, zero telemetry, 100% offline."
-
-### The 3 Core Pain Points Solved
-
-1. **Enterprise IP & Data Sovereignty**: Defense, healthcare, finance, and enterprise developers cannot paste proprietary requirements into ChatGPT or Claude. LARP executes 100% on localhost with zero data egress.
-2. **Context Budgeting for Small Models**: Small local models (3B to 7B) have limited context windows and lower reasoning thresholds. LARP uses internal prompt structuring and automated context condensation to prevent small models from hallucinating or crashing.
-3. **Immediate Developer Utility**: Unlike generic chatbots, LARP produces concrete software deliverables: `SPEC.md`, `ARCHITECTURE.md`, `.cursorrules` (Cursor / Windsurf), and `SKILL.md` (Claude Code / Antigravity).
-
-### Panelist Q&A Defense
-
-- **"Why not just use ChatGPT or Claude?"**
-  - Data privacy and cost. Enterprise policy prohibits leaking trade secrets to third-party model providers. LARP runs offline with zero subscription fees and zero cloud latency.
-- **"Can a small 4B local model actually generate software architecture?"**
-  - LARP is an 80% baseline scaffolding engine. It bootstraps the heavy initial structure, technical constraints, component breakdowns, and data models locally so the human engineer can refine it without starting from a blank page.
-- **"Is the UI inspired by OpenCode?"**
-  - Yes. We adopted the keyboard-driven TUI design language popularized by modern developer tools like OpenCode and Claude Code, but built our own native Python terminal engine with background multithreading, live token streaming, and zero cloud dependencies.
-
----
-
 ## Technical Disclosures
 
 Mandatory hackathon technical specifications and disclosures:
