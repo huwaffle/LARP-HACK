@@ -4,6 +4,67 @@ An offline, keyboard-driven AI refinement platform and developer workspace. Oper
 
 ---
 
+## Pitch & Presentation Guide
+
+This section outlines the core narrative and talking points for presenting LARP to judges and panelists.
+
+### The 30-Second Pitch (Stage Script)
+
+> "Every engineering team wants to leverage AI for prompt engineering and system design, but corporate security policies strictly forbid sending proprietary source code and confidential architecture to cloud APIs. Meanwhile, running raw local models produces unstructured, inconsistent answers.
+> 
+> LARP solves this by turning small local language models into an offline developer workbench. Disconnect your machine from Wi-Fi: LARP takes a single concept, enhances the prompt, generates a full functional specification, drafts an architecture blueprint, and exports production-ready `.cursorrules` and `SKILL.md` agent files directly to your repo in under 60 seconds. Zero API costs, zero telemetry, 100% offline."
+
+### The 3 Core Pain Points Solved
+
+1. **Enterprise IP & Data Sovereignty**: Defense, healthcare, finance, and enterprise developers cannot paste proprietary requirements into ChatGPT or Claude. LARP executes 100% on localhost with zero data egress.
+2. **Context Budgeting for Small Models**: Small local models (3B to 7B) have limited context windows and lower reasoning thresholds. LARP uses internal prompt structuring and automated context condensation to prevent small models from hallucinating or crashing.
+3. **Immediate Developer Utility**: Unlike generic chatbots, LARP produces concrete software deliverables: `SPEC.md`, `ARCHITECTURE.md`, `.cursorrules` (Cursor / Windsurf), and `SKILL.md` (Claude Code / Antigravity).
+
+### Panelist Q&A Defense
+
+- **"Why not just use ChatGPT or Claude?"**
+  - Data privacy and cost. Enterprise policy prohibits leaking trade secrets to third-party model providers. LARP runs offline with zero subscription fees and zero cloud latency.
+- **"Can a small 4B local model actually generate software architecture?"**
+  - LARP is an 80% baseline scaffolding engine. It bootstraps the heavy initial structure, technical constraints, component breakdowns, and data models locally so the human engineer can refine it without starting from a blank page.
+- **"Is the UI inspired by OpenCode?"**
+  - Yes. We adopted the keyboard-driven TUI design language popularized by modern developer tools like OpenCode and Claude Code, but built our own native Python terminal engine with background multithreading, live token streaming, and zero cloud dependencies.
+
+---
+
+## Technical Disclosures
+
+Mandatory hackathon technical specifications and disclosures:
+
+### 1. Models Used
+- **Primary / Default SLM**: `gemma3:4b` (Google Gemma 3 4B parameters, instruction-tuned, 4-bit quantized via Ollama).
+- **Supported Local Models**:
+  - `llama3.2:3b` (Meta Llama 3.2 3B, low resource, fast execution)
+  - `qwen2.5:7b` / `qwen2.5-coder:7b` (Alibaba Qwen 2.5, optimized for technical specifications and coding)
+  - `mistral:7b` (Mistral AI 7B v0.3, balanced general reasoning)
+- **Embeddings & Vision**: None. Pure local generative SLM text inference.
+
+### 2. Technologies & Frameworks
+- **Language & Runtime**: Python 3.10+ (Standard library: `urllib.request`, `json`, `threading`, `difflib`, `colorsys`, `ctypes`).
+- **Local Inference Engine**: Ollama (runs locally on `http://127.0.0.1:11434`, utilizing a llama.cpp C/C++ backend with GPU/CPU acceleration).
+- **Terminal User Interface (TUI)**:
+  - `prompt_toolkit`: Full-screen layout engine, custom buffer processor, keybinding event loop, and live autocomplete popup.
+  - `rich`: Markdown parsing, terminal ANSI color engine, and inline visual diff renderer.
+- **System Utilities**: `pyperclip` (operating system clipboard access).
+- **Packaging**: `setuptools` / `pyproject.toml` (exposes console script entrypoint `larp = larp.app:main`).
+- **Database & Persistence**: Local filesystem only (`larp_output/`, `.larp_theme`). Zero external databases.
+
+### 3. APIs & Cloud Services
+- **None (0 Cloud APIs / 0 External Endpoints)**.
+- LARP has zero remote network dependencies. All inference calls are strictly routed to `http://127.0.0.1:11434` on localhost.
+
+### 4. Existing Code, Assets & AI Development Tools
+- **AI Development Tools**: Devin, Antigravity IDE, Cursor (utilized for pair programming and code generation assistance during the hackathon sprint).
+- **Open-Source Libraries**: `prompt_toolkit`, `rich`, `pyperclip`, `setuptools`.
+- **Pre-Existing Codebases / Starter Templates**: None. Core application architecture, terminal engine, and feature pipelines were built from scratch during the hackathon sprint.
+- **UI Design Paradigm**: Inspired by developer CLI tools including OpenCode and Claude Code.
+
+---
+
 ## 60-Second Quickstart
 
 ### 1. Prerequisites
@@ -72,6 +133,7 @@ python -m larp
 | `/save` | - | Saves the most recent result to a specified file | Local file |
 | `/clear` | `/cls` | Clears terminal display buffer | Clean viewport |
 | `/developers` | `/team` | Displays team roster and credits | Credits panel |
+| `/help` | `/?` | Opens the command reference panel | Reference modal |
 | `/quit` | `/exit` | Exits the application and cleanly terminates the terminal session | Exit |
 
 ---
@@ -134,8 +196,6 @@ LARP-HACK/
 - Zian Kyle Piangco
 - Paulo Mendoza
 - Joshua Enriquez
-
-UI design inspired by modern developer terminal tools including OpenCode and Claude Code.
 
 ---
 
