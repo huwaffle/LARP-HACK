@@ -1,87 +1,100 @@
 # LARP (Local AI Refinement Platform)
 
-An offline, terminal-based AI refinement platform and developer toolbox. Operating entirely on your local machine through Ollama, LARP provides zero telemetry, zero cloud dependencies, and zero latency overhead from network calls.
+An offline, keyboard-driven AI refinement platform and developer workspace. Operating 100% locally through Ollama, LARP provides structured prompt engineering, technical specification drafting, system architecture blueprints, and AI agent rule compilation with zero cloud telemetry.
 
 ---
 
-## Prerequisites
+## 60-Second Quickstart
 
-1. **Python 3.10+**: Download from https://python.org (ensure "Add Python to PATH" is checked during installation).
-2. **Ollama**: Download and install from https://ollama.com.
-3. **Download a local model**: Run this once in your terminal (requires internet for the initial download):
-   ```bash
-   ollama pull gemma3:4b
-   ```
-   *(Alternative models: `llama3.2:3b`, `qwen2.5:7b`, or `mistral:7b`)*
+### 1. Prerequisites
 
-Once the model is downloaded, your internet/Wi-Fi can be completely turned off.
+Ensure you have installed:
+- **Python 3.10+**: https://python.org (Check "Add Python to PATH" during installation)
+- **Ollama**: https://ollama.com
 
----
+Pull a lightweight model to your local machine:
+```bash
+ollama pull gemma3:4b
+```
+*(Alternative supported models: `llama3.2:3b`, `qwen2.5:7b`, `mistral:7b`)*
 
-## Installation & Running
+### 2. Launch LARP
 
-### Option 1: Direct Run (Windows - No Installation Needed)
-Double-click `larp.bat` or run from PowerShell:
+Choose the method that fits your environment:
+
+#### Method A: Windows One-Click (Recommended for Judges)
+Double-click `larp.bat`, or execute from PowerShell:
 ```powershell
 .\larp.bat
 ```
-`larp.bat` automatically verifies dependencies, starts the local Ollama service if it is not already running, and launches LARP.
+*`larp.bat` automatically verifies Python packages, boots the local Ollama daemon if idle, and opens the interface.*
 
-### Option 2: System-Wide CLI Command (Windows)
-Double-click `install.bat` (or run `pip install -e .`). 
-After installation, open a new terminal anywhere and type:
+#### Method B: System-Wide Command Installation (Windows)
+Double-click `install.bat` (or run `pip install -e .`). You can then open any terminal window and type:
 ```bash
 larp
 ```
 
-### Option 3: Standard Python (Linux, macOS, Windows)
+#### Method C: Cross-Platform (macOS / Linux / Windows)
 ```bash
 pip install -r requirements.txt
 python -m larp
 ```
 
-### Non-Interactive One-Shot CLI Mode
-You can also run tasks directly without opening the interactive TUI:
+---
+
+## Key Controls
+
+- `Enter`: Submit text
+- `Ctrl + J`: Insert a new line in the input box
+- `Tab` / `Shift + Tab`: Cycle active modes (`Enhance` -> `Spec` -> `Architect` -> `Skill` -> `Humanize` -> `Grammar`)
+- `/`: Open the slash-command menu
+- `PageUp` / `PageDown`: Scroll through the output log
+- `Ctrl + C`: Cancel an in-progress generation or exit cleanly
+
+---
+
+## Command Reference
+
+| Command | Shortcut | Purpose | Output |
+|---|---|---|---|
+| `/enhanceprompt` | `/enhance` | Expands vague prompts into production-grade instructions | Refined prompt with structure |
+| `/projectspec` | `/spec` | Turns a raw project concept into a functional specification | `SPEC.md` |
+| `/architect` | `/plan` | Generates system topologies, tech stack blueprints, and data models | `ARCHITECTURE.md` |
+| `/aiskill` | `/skill` | Compiles reusable AI coding rules (`SKILL.md`, `CLAUDE.md`, `.cursorrules`) | IDE agent rules |
+| `/humanize` | `/human` | Rewrites mechanical AI outputs into natural human voice | Refined text + colored diff |
+| `/fixgrammar` | `/grammar` | Fixes spelling, punctuation, and syntax without altering intent | Corrected text + colored diff |
+| `/auto` | `/pipeline` | Runs the full 4-stage chained pipeline from a single prompt | All 4 markdown docs |
+| `/install` | `/export` | Installs generated artifacts directly to a chosen project folder | Saves files to disk |
+| `/model` | `/models` | Switches between locally installed Ollama models | Changes active LLM |
+| `/theme` | `/color` | Switches terminal UI themes (green, blue, purple, red, orange) | Dynamic re-theme |
+| `/copy` | - | Copies the most recent result directly to your clipboard | System clipboard |
+| `/save` | - | Saves the most recent result to a specified file | Local file |
+| `/clear` | `/cls` | Clears terminal display buffer | Clean viewport |
+| `/developers` | `/team` | Displays team roster and credits | Credits panel |
+| `/quit` | `/exit` | Exits the application and cleanly terminates the terminal session | Exit |
+
+---
+
+## Non-Interactive CLI Mode (Scripting & Piping)
+
+LARP also supports direct execution without the full-screen interface:
+
 ```bash
-python -m larp grammar "This is an sample text with an grammatical mistakes."
-python -m larp enhance "build an authentication service in go"
+# Correct grammar directly
+python -m larp grammar "This is an sample sentence with an mistake."
+
+# Enhance a prompt directly
+python -m larp enhance "build an authentication service in rust"
 ```
 
 ---
 
-## Commands & Workflows
+## System Architecture
 
-Type `/` in the input bar to open the command palette. Navigate with Up/Down, complete with Tab, and run with Enter. You can also cycle through modes directly by pressing Tab or Shift+Tab.
-
-| Command | Aliases | Description |
-|---|---|---|
-| `/enhanceprompt` | `/enhance`, `/prompt` | Expands vague prompts into structured, high-signal instructions. |
-| `/projectspec` | `/spec` | Turns a raw project concept into a functional product specification. |
-| `/architect` | `/plan` | Generates system architecture designs, tech stacks, and component blueprints. |
-| `/aiskill` | `/skill` | Compiles reusable AI coding rules (`SKILL.md`, `CLAUDE.md`, `.cursorrules`). |
-| `/humanize` | `/human` | Refines stiff or robotic writing into natural phrasing with an inline diff. |
-| `/fixgrammar` | `/grammar` | Corrects spelling, punctuation, and syntax with an inline diff. |
-| `/auto` | `/pipeline`, `/all` | Chained pipeline: turns 1 idea into an enhanced prompt, spec, architecture, and skill. |
-| `/install` | `/export`, `/download` | Exports generated files to a directory (This folder, Desktop, Downloads, or custom path). |
-| `/copy` | - | Copies the last generated output to your clipboard. |
-| `/save` | - | Saves the last generated output to a designated file. |
-| `/retry` | `/again` | Re-runs the previous task. |
-| `/clear` | `/cls` | Clears the terminal output log. |
-| `/model` | `/models` | Switches between locally installed Ollama models. |
-| `/theme` | `/color`, `/tint` | Changes color themes (green, blue, purple, red, orange). |
-| `/developers` | `/team`, `/about` | Displays team and contributor credits. |
-| `/help` | `/?` | Opens the command reference panel. |
-| `/quit` | `/exit` | Closes LARP and cleanly terminates the terminal session. |
-
----
-
-## Key Features
-
-- **100% Offline & Private**: Zero data leaves your machine. Safe for proprietary codebases, internal architectures, and confidential notes.
-- **Multithreaded Background Inference**: Heavy LLM generation runs on a background worker thread. The interface never freezes, and you can cancel running generations instantly with `Ctrl+C`.
-- **In-App Scroll Buffer**: Long outputs (specifications, blueprints) are rendered in full Markdown and can be scrolled in-place using `PageUp` and `PageDown`.
-- **Smart Context Window Management**: Input that exceeds small local model limits is automatically budgeted and condensed without losing key technical constraints.
-- **Format-Ready Exports**: One-click install to `.cursorrules` (Cursor/Windsurf), `CLAUDE.md` (Claude Code), and `SKILL.md` (Antigravity/Agentic tools).
+- **Zero Cloud Egress**: All HTTP calls target `http://127.0.0.1:11434`. Disconnecting your machine from Wi-Fi will not affect functionality.
+- **Multithreaded Non-Blocking Runtime**: LLM inference runs on a background daemon worker. The terminal interface remains responsive, allowing live token streaming and instantaneous cancellation.
+- **Context Window Management**: Input exceeding small model context budgets is automatically parsed and condensed to preserve critical technical constraints without triggering token overflow errors.
 
 ---
 
@@ -90,19 +103,25 @@ Type `/` in the input bar to open the command palette. Navigate with Up/Down, co
 ```
 LARP-HACK/
 |-- larp/
-|   |-- __init__.py       # Package definition
-|   |-- __main__.py       # Module entrypoint for python -m larp
-|   |-- app.py            # Terminal user interface, layout, and event loop
-|   |-- ai.py             # Local Ollama HTTP client (chat, streaming, model tags)
-|   |-- core.py           # Feature orchestration, context budgeting, and chunking
-|   |-- terminal.py       # Terminal session and process integration
-|   `-- prompts/          # System instruction templates for each task
-|-- pyproject.toml        # Standard packaging and CLI script entrypoint
-|-- requirements.txt      # Python dependencies
+|   |-- app.py            # Terminal interface, layout engine, and keybindings
+|   |-- ai.py             # Ollama local HTTP client (streaming & model discovery)
+|   |-- core.py           # Feature orchestration, context budgeting, and prompts
+|   |-- terminal.py       # Terminal session integration
+|   `-- prompts/          # Task-specific system instruction templates
+|-- pyproject.toml        # Standard package configuration for CLI installation
+|-- requirements.txt      # Core Python dependencies
 |-- larp.bat              # One-click Windows runner
-|-- install.bat           # System-wide CLI installer
-`-- README.md             # Project documentation
+|-- install.bat           # System-wide installer
+`-- README.md             # Documentation
 ```
+
+---
+
+## Troubleshooting
+
+- **"Cannot reach Ollama"**: Verify that Ollama is installed and running. Start it manually with `ollama serve` or run `larp.bat` which launches it automatically.
+- **"No models found"**: Ensure you have pulled at least one model via `ollama pull gemma3:4b`. Use `/model` inside LARP to detect it.
+- **Terminal Display Issues**: Recommended terminal environments include Windows Terminal, VS Code Integrated Terminal, Alacritty, or iTerm2 with UTF-8 encoding enabled.
 
 ---
 
@@ -116,10 +135,10 @@ LARP-HACK/
 - Paulo Mendoza
 - Joshua Enriquez
 
-UI design inspired by modern terminal developer tools including OpenCode and Claude Code.
+UI design inspired by modern developer terminal tools including OpenCode and Claude Code.
 
 ---
 
 ## License
 
-MIT License. See LICENSE for details.
+MIT License.
