@@ -21,17 +21,18 @@ larp
 Then you see a menu:
 
 ```
-  LARP: Local AI Refinement Platform      🔒 Offline
+  LARP: Local AI Refinement Platform      [OFFLINE]
 
-  What do you want to do?
+  Select an action:
 
-   ❯ ✨ Enhance a prompt
-     📋 Make a project spec
-     🧩 Make an AI skill
-     🗣️  Humanize text
-     ✍️  Fix grammar
-     ⚙️  Settings (choose AI model)
-     ❌ Quit
+   > Enhance a prompt
+     Make a project spec
+     Architect planner
+     Make an AI skill
+     Humanize text
+     Fix grammar
+     Settings (choose AI model)
+     Quit
 ```
 
 You press **Enter** on one, and it walks you through:
@@ -46,15 +47,16 @@ That's the whole product.
 
 ---
 
-## 3. The five features (all in the menu)
+## 3. The features (all in the menu)
 
 | Menu option | What it does in plain words |
 |---|---|
-| ✨ **Enhance a prompt** | Rewrites a weak, vague prompt so the AI knows exactly what you want |
-| 📋 **Make a project spec** | Turns a one-line idea into a proper project plan |
-| 🧩 **Make an AI skill** | Creates a reusable rulebook an AI can follow every time, and saves it as a real file |
-| 🗣️ **Humanize text** | Makes stiff, robotic text sound like a real person wrote it |
-| ✍️ **Fix grammar** | Fixes spelling, grammar and punctuation without changing the meaning |
+| Enhance a prompt | Rewrites a weak, vague prompt so the AI knows exactly what you want |
+| Make a project spec | Turns a one-line idea into a proper project plan |
+| Architect planner | Converts requirements into system architecture designs, tech stack choices, component breakdowns, and step-by-step technical blueprints |
+| Make an AI skill | Creates a reusable rulebook an AI can follow every time, and saves it as a real file |
+| Humanize text | Makes stiff, robotic text sound like a real person wrote it |
+| Fix grammar | Fixes spelling, grammar and punctuation without changing the meaning |
 
 **Bonus for power users:** the same things also work as direct commands (`larp enhance "..."`) if someone prefers typing.
 
@@ -63,12 +65,12 @@ That's the whole product.
 ## 4. What makes it demo-worthy
 
 1. **The menu itself:** looks like a real product, not a script
-2. **Before/after score:** "3/10 → 9/10" with bars, so judges see the value instantly
+2. **Before/after score:** "3/10 -> 9/10" with bars, so judges see the value instantly
 3. **Colored diff:** removed words in red, added words in green
 4. **Skill export:** saves a real file (`SKILL.md`, `CLAUDE.md` or `.cursorrules`) that works in AI coding tools
-5. **Offline proof:** a 🔒 badge on screen, and Wi-Fi turned off live during the demo
+5. **Offline proof:** an [OFFLINE] badge on screen, and Wi-Fi turned off live during the demo
 
-*Note: small local models can be unreliable at scoring. Ask for a number only and use a fallback if the answer isn't a number.*
+_Note: small local models can be unreliable at scoring. Ask for a number only and use a fallback if the answer isn't a number._
 
 ---
 
@@ -110,6 +112,7 @@ larp/
 ├── features/
 │   ├── enhance.py
 │   ├── spec.py
+│   ├── architect.py
 │   ├── skill.py
 │   ├── humanize.py
 │   └── grammar.py
@@ -122,15 +125,15 @@ larp/
 
 ## 7. Priority order
 
-| Priority | Item | Why |
-|---|---|---|
-| 1 | Ollama connection + `enhance` working | Everything depends on it |
-| 2 | Main menu + the "what next?" screen | Makes it feel like a product |
-| 3 | Before/after score | The wow factor |
-| 4 | `spec` and `skill` (with file save) | Shows range and real value |
-| 5 | Colored diff | Makes results visible |
-| 6 | `humanize` and `grammar` | Quick wins, just new instructions |
-| 7 | Offline badge + settings (pick model) | Cheap and convincing |
+| Priority | Item                                  | Why                               |
+| -------- | ------------------------------------- | --------------------------------- |
+| 1        | Ollama connection + `enhance` working | Everything depends on it          |
+| 2        | Main menu + the "what next?" screen   | Makes it feel like a product      |
+| 3        | Before/after score                    | The wow factor                    |
+| 4        | `spec` and `skill` (with file save)   | Shows range and real value        |
+| 5        | Colored diff                          | Makes results visible             |
+| 6        | `humanize` and `grammar`              | Quick wins, just new instructions |
+| 7        | Offline badge + settings (pick model) | Cheap and convincing              |
 
 If time runs short, cut the settings screen, never the score.
 
@@ -138,15 +141,15 @@ If time runs short, cut the settings screen, never the score.
 
 ## 8. 3-hour schedule
 
-| Time | What to do |
-|---|---|
+| Time             | What to do                                                          |
+| ---------------- | ------------------------------------------------------------------- |
 | **0:00 to 0:30** | Install Python + Ollama, download a small model, confirm it answers |
-| **0:30 to 1:00** | Build `enhance` as a plain function, then wrap it in the menu |
-| **1:00 to 1:30** | Add before/after score + spinner + "what next?" screen |
-| **1:30 to 2:10** | Add `spec` and `skill` (with file export) |
-| **2:10 to 2:30** | Add `humanize` and `grammar` + colored diff |
-| **2:30 to 2:50** | Offline badge, then test everything with Wi-Fi OFF |
-| **2:50 to 3:00** | Rehearse the demo once |
+| **0:30 to 1:00** | Build `enhance` as a plain function, then wrap it in the menu       |
+| **1:00 to 1:30** | Add before/after score + spinner + "what next?" screen              |
+| **1:30 to 2:10** | Add `spec` and `skill` (with file export)                           |
+| **2:10 to 2:30** | Add `humanize` and `grammar` + colored diff                         |
+| **2:30 to 2:50** | Offline badge, then test everything with Wi-Fi OFF                  |
+| **2:50 to 3:00** | Rehearse the demo once                                              |
 
 ---
 
