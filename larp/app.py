@@ -844,6 +844,32 @@ def build_app():
     return APP
 
 
+def print_cli_help():
+    sys.stdout.write("""LARP - Local AI Refinement Platform (v0.3.0)
+
+Usage:
+  larp                     Launch interactive terminal interface
+  larp <command> <text>    Run a feature in non-interactive CLI mode
+
+Features:
+  enhance    Expand vague prompts into structured instructions
+  spec       Generate a functional project specification (SPEC.md)
+  architect  Generate system architecture blueprint (ARCHITECTURE.md)
+  skill      Compile AI coding rules (SKILL.md, CLAUDE.md, .cursorrules)
+  humanize   Rewrite mechanical text into natural voice
+  grammar    Correct spelling, punctuation, and syntax
+
+Options:
+  -h, --help     Show this help message
+  -v, --version  Show version
+
+Examples:
+  larp
+  larp grammar "this is an test"
+  larp enhance "build an authentication service in rust"
+""")
+
+
 def main():
     load_theme()
     try:
@@ -852,11 +878,26 @@ def main():
             state["model"] = models[0]
     except Exception:
         pass
+    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help", "help"):
+        print_cli_help()
+        return
+    if len(sys.argv) > 1 and sys.argv[1] in ("-v", "--version", "version"):
+        sys.stdout.write("LARP v0.3.0\n")
+        return
+    if len(sys.argv) == 2 and sys.argv[1] in core.FEATURES:
+        sys.stdout.write(f"Usage: larp {sys.argv[1]} \"<text or file path>\"\n")
+        return
     if len(sys.argv) > 2 and sys.argv[1] in core.FEATURES:
         sys.stdout.write(core.run(sys.argv[1], " ".join(sys.argv[2:]), state["model"]) + "\n")
         return
     state["online"] = ai.is_online()
-    build_app().run()
+    try:
+        build_app().run()
+    except Exception as e:
+        if "NoConsoleScreenBufferError" in type(e).__name__:
+            sys.stdout.write("LARP interactive mode requires a standard console window (e.g. Windows Terminal, PowerShell, CMD).\nFor non-interactive use, run: larp <command> \"<text>\"\n")
+        else:
+            raise
     if state.get("close_terminal"):
         terminal.close_terminal()
 
