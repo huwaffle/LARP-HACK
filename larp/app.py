@@ -2,11 +2,14 @@ import colorsys
 import difflib
 import io
 import os
+import re
 import sys
 import threading
 import time
+from pathlib import Path
 
 import pyperclip
+from rich.align import Align
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -15,23 +18,27 @@ from rich.text import Text
 from prompt_toolkit.application import Application
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.data_structures import Point
+from prompt_toolkit.document import Document
 from prompt_toolkit.filters import Condition
-from prompt_toolkit.formatted_text import ANSI, FormattedText
+from prompt_toolkit.formatted_text import ANSI, FormattedText, to_formatted_text
+from prompt_toolkit.formatted_text.utils import split_lines
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import (
     BufferControl, ConditionalContainer, Dimension, FormattedTextControl, HSplit, Layout, VSplit, Window, WindowAlign,
 )
-from prompt_toolkit.layout.processors import Processor, Transformation
+from prompt_toolkit.layout.margins import ScrollbarMargin
+from prompt_toolkit.layout.processors import HighlightSelectionProcessor, Processor, Transformation
+from prompt_toolkit.selection import SelectionType
+from prompt_toolkit.mouse_events import MouseButton, MouseEventType
 from prompt_toolkit.styles import DynamicStyle, Style as PtStyle
 
-import ai
-from features import core
+from . import ai, core, terminal
 
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
 
 state = {"model": ai.DEFAULT_MODEL, "mode": "enhance", "busy": False, "cancel": False, "online": True,
-         "picker": None, "scroll": 0, "result": None, "fname": None, "last": None}
+         "picker": None, "files": None, "scroll": 0, "result": None, "fname": None, "last": None}
 APP = None
 log = []
 version = [0]
@@ -45,12 +52,14 @@ COMMANDS = [
     ("humanize", "humanize", "Humanize text", ["human"]),
     ("fixgrammar", "grammar", "Fix grammar", ["grammar"]),
     ("auto", "auto", "Run full pipeline", ["pipeline", "all"]),
+    ("install", "install", "Install result to a folder", ["export", "download"]),
     ("copy", "copy", "Copy last result", []),
     ("save", "save", "Save last result to file", []),
     ("retry", "retry", "Run the last task again", ["again"]),
     ("clear", "clear", "Clear the screen", ["cls"]),
     ("model", "model", "Choose AI model", ["models"]),
     ("theme", "theme", "Change color theme", ["color", "colors", "tint"]),
+    ("developers", "developers", "Meet the team", ["devs", "team", "credits", "about"]),
     ("help", "help", "Show commands", ["?"]),
     ("quit", "quit", "Exit LARP", ["exit"]),
 ]
@@ -87,22 +96,22 @@ PLACEHOLDER = 'Ask anything... "Make my prompt better"'
 
 THEMES = {"green": (0.40, "#3ddc84"), "blue": (0.60, "#4d8dff"), "purple": (0.75, "#a970ff"),
           "red": (0.00, "#ff5a5f"), "orange": (0.08, "#ff9f43")}
-CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".larp_theme")
+CONFIG = os.path.join(os.path.expanduser("~"), ".larp_theme")
 
 
-def _hex(h, l, s):
-    r, g, b = colorsys.hls_to_rgb(h, l, s)
-    return f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
+def _hsv(h, s, v):
+    r, g, b = colorsys.hsv_to_rgb(h, s, v)
+    return f"#{round(r * 255):02x}{round(g * 255):02x}{round(b * 255):02x}"
 
 
 def apply_theme(name):
     global BG, BOX, BLUE, STYLE
     h, BLUE = THEMES[name]
-    BG, BOX = _hex(h, .04, .3), _hex(h, .11, .25)
-    text, dim, bright = _hex(h, .9, .25), _hex(h, .45, .15), _hex(h, .96, .2)
+    BG, BOX = _hsv(h, .46, .051), _hsv(h, .40, .137)
+    text, dim, bright = _hsv(h, .054, .925), _hsv(h, .27, .52), _hsv(h, .016, .968)
     STYLE = PtStyle.from_dict({
         "": f"bg:{BG} {text}",
-        "logo.dim": f"bg:{BG} {_hex(h, .5, .15)} bold",
+        "logo.dim": f"bg:{BG} {_hsv(h, .25, .57)} bold",
         "logo.bright": f"bg:{BG} {bright} bold",
         "box": f"bg:{BOX} {text}",
         "bar": f"bg:{BOX} {BLUE}",
@@ -115,8 +124,11 @@ def apply_theme(name):
         "ok": f"bg:{BOX} #4ade80",
         "bad": f"bg:{BOX} #f87171",
         "busy": f"bg:{BOX} #fbbf24",
-        "pop": f"bg:{BOX} {_hex(h, .72, .2)}",
+        "pop": f"bg:{BOX} {_hsv(h, .145, .776)}",
         "pop.sel": f"bg:{BLUE} #0a0a0a bold",
+        "selected": f"bg:{BLUE} #0a0a0a",
+        "scrollbar.background": f"bg:{_hsv(h, .30, .22)}",
+        "scrollbar.button": f"bg:{BLUE}",
     })
     state["theme"] = name
     version[0] += 1
@@ -148,15 +160,28 @@ def add(item):
     bump()
 
 
+seg_cache = {}
+
+
 def render_log(width):
     key = (version[0], width, len(log))
     if cache.get("key") != key:
-        buf = io.StringIO()
-        c = Console(file=buf, force_terminal=True, width=width, color_system="truecolor", legacy_windows=False)
+        parts = []
         for e in log:
+            static = not callable(e) or getattr(e, "done", False)
+            hit = seg_cache.get(id(e))
+            if static and hit and hit[0] == (width, state.get("theme")):
+                parts.append(hit[1])
+                continue
+            buf = io.StringIO()
+            c = Console(file=buf, force_terminal=True, width=width, color_system="truecolor", legacy_windows=False)
             c.print(e() if callable(e) else e)
-        out = buf.getvalue().rstrip("\n")
-        cache.update(key=key, ansi=ANSI(out), lines=out.count("\n") + 1)
+            if static:
+                seg_cache[id(e)] = ((width, state.get("theme")), buf.getvalue())
+            parts.append(buf.getvalue())
+        out = "".join(parts).rstrip("\n")
+        ansi = ANSI(out)
+        cache.update(key=key, ansi=ansi, lines=max(1, len(list(split_lines(to_formatted_text(ansi))))))
     return cache["ansi"], cache["lines"]
 
 
@@ -167,13 +192,81 @@ def log_width():
         return 80
 
 
+frame = {"lines": 1}
+
+
 def log_text():
-    return render_log(log_width())[0]
+    ansi, frame["lines"] = render_log(log_width())
+    return ansi
+
+
+view = {"win": None, "dir": 1}
+
+
+def view_height():
+    info = view["win"].render_info if view["win"] else None
+    return info.window_height if info else 20
+
+
+def scroll_by(delta):
+    state["scroll"] = max(0, state["scroll"] + delta)
+    view["dir"] = 1 if delta > 0 else -1
+    bump()
 
 
 def log_cursor():
-    n = render_log(log_width())[1]
-    return Point(0, max(0, n - 1 - state["scroll"]))
+    n, h = frame["lines"], view_height()
+    state["scroll"] = s = min(state["scroll"], max(0, n - h))
+    if s == 0:
+        y = n - 1
+    else:
+        top = n - h - s
+        y = top if view["dir"] > 0 else top + h - 1
+    return Point(0, max(0, min(y, n - 1)))
+
+
+def paste_clipboard():
+    if time.time() - view.get("pasted", 0) < 0.4 or state["busy"] or not view.get("buf"):
+        return
+    view["pasted"] = time.time()
+    try:
+        text = pyperclip.paste()
+    except Exception:
+        return
+    text = text.replace(chr(13) + chr(10), chr(10)).replace(chr(13), chr(10))
+    if text:
+        view["buf"].insert_text(text)
+        bump()
+
+
+def is_right_click(mouse_event):
+    return mouse_event.button == MouseButton.RIGHT and mouse_event.event_type == MouseEventType.MOUSE_DOWN
+
+
+class PasteText(FormattedTextControl):
+    def mouse_handler(self, mouse_event):
+        if is_right_click(mouse_event):
+            return paste_clipboard()
+        return NotImplemented
+
+
+class PasteBuffer(BufferControl):
+    def mouse_handler(self, mouse_event):
+        if is_right_click(mouse_event):
+            return paste_clipboard()
+        return super().mouse_handler(mouse_event)
+
+
+class LogControl(FormattedTextControl):
+    def mouse_handler(self, mouse_event):
+        if is_right_click(mouse_event):
+            return paste_clipboard()
+        if mouse_event.event_type == MouseEventType.SCROLL_UP:
+            scroll_by(3)
+        elif mouse_event.event_type == MouseEventType.SCROLL_DOWN:
+            scroll_by(-3)
+        else:
+            return NotImplemented
 
 
 # ---------------------------------------------------------------- jobs
@@ -183,60 +276,73 @@ class Cancelled(Exception):
 
 
 def stream_into(feature, inp, option=None):
-    t = {"v": ""}
+    t = {"v": "", "note": ""}
     md = feature in MARKDOWN
     title = core.FEATURES[feature]["title"]
-    add(lambda: Panel(Markdown(t["v"]) if md and t["v"] else (t["v"] or "..."), title=title, border_style="green"))
+
+    def entry():
+        rich_md = md and t["v"] and (entry.done or len(t["v"]) < 12000)
+        return Panel(Markdown(t["v"]) if rich_md else (t["v"] or "..."), title=title, subtitle=t["note"] or None, border_style=BLUE)
+
+    entry.done = False
+
+    def status(msg):
+        t["note"] = msg
+        bump()
+
+    add(entry)
     last = 0
-    for chunk in core.run_stream(feature, inp, state["model"], option):
+    for chunk in core.run_stream(feature, inp, state["model"], option, status):
         if state["cancel"]:
             raise Cancelled()
         t["v"] += chunk
-        if time.time() - last > 0.08:
+        if time.time() - last > min(1.0, 0.12 + len(t["v"]) / 60000):
             bump()
             last = time.time()
+    t["note"] = ""
+    entry.done = True
     bump()
     return t["v"].strip()
 
 
-def bar(n):
-    return "[" + "=" * round(n) + " " * (10 - round(n)) + "]"
+def preview(text, lines=12, chars=1200):
+    nl = chr(10)
+    shown = nl.join(text.splitlines()[:lines])[:chars]
+    if len(shown) < len(text.rstrip()):
+        shown += f"{nl}... ({len(text) - len(shown):,} more characters, {len(text.split()):,} words in total)"
+    return shown
 
 
 def diff_text(a, b):
+    wa, wb = a.split(), b.split()
+    if max(len(wa), len(wb)) > 4000:
+        return Text("Diff skipped: the text is too long to compare word by word.", style="dim")
     t = Text()
-    for tok in difflib.ndiff(a.split(), b.split()):
-        if tok.startswith("- "):
-            t.append(tok[2:] + " ", style="red strike")
-        elif tok.startswith("+ "):
-            t.append(tok[2:] + " ", style="green")
-        elif tok.startswith("  "):
-            t.append(tok[2:] + " ")
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, wa, wb, autojunk=False).get_opcodes():
+        if tag == "equal":
+            t.append(" ".join(wa[i1:i2]) + " ")
+            continue
+        if tag in ("delete", "replace"):
+            t.append(" ".join(wa[i1:i2]) + " ", style="red strike")
+        if tag in ("insert", "replace"):
+            t.append(" ".join(wb[j1:j2]) + " ", style="green")
     return t
 
 
 def run_single(feature, text, option):
     info = core.FEATURES[feature]
     if feature in ("enhance", "humanize", "grammar"):
-        add(Panel(text, title="Original", border_style="red"))
+        add(Panel(preview(text), title=f"Original ({len(text):,} characters)" if len(text) > 1200 else "Original", border_style="red"))
     else:
-        add(Text("> " + text.replace("\n", " ")[:160], style="dim"))
+        add(Text("> " + " ".join(text.split())[:160], style="dim"))
     result = stream_into(feature, text, option)
     state["result"] = result
     state["fname"] = option if feature == "skill" and option else info["file"]
     if info["diff"]:
-        add(Panel(diff_text(text, result), title="Diff", border_style="blue"))
-    if info["score"]:
-        s = {"v": "Scoring..."}
-        add(lambda: Text(s["v"], style="dim"))
-        b, a = core.score(feature, text, state["model"]), core.score(feature, result, state["model"])
-        if b and a:
-            s["v"] = f"Before {bar(b)} {b:g}/10\nAfter  {bar(a)} {a:g}/10  ({a - b:+g})"
-            bump()
-        else:
-            log.remove(log[-1])
-            bump()
-    add(Text("/copy  /save  /retry", style="dim"))
+        d = diff_text(text, result)
+        add(lambda: Panel(d, title="Diff", border_style=BLUE))
+    state["files"] = [(state["fname"], result)]
+    add(Text("/install  /copy  /save  /retry", style="dim"))
 
 
 def run_auto(idea):
@@ -251,7 +357,8 @@ def run_auto(idea):
         res[feature] = stream_into(feature, inp, option)
         open(os.path.join(out_dir, fname), "w", encoding="utf-8").write(res[feature])
     state["result"], state["fname"] = res["spec"], "SPEC.md"
-    add(Text(f"Done. Saved {', '.join(f for _, f in AUTO_STEPS)} in the {out_dir} folder.", style="bold green"))
+    state["files"] = [(fname, res[feature]) for feature, fname in AUTO_STEPS]
+    add(lambda: Text(f"Done. Saved {', '.join(f for _, f in AUTO_STEPS)} in the {out_dir} folder.", style=f"bold {BLUE}"))
 
 
 def job(feature, text, option):
@@ -276,9 +383,36 @@ def parse_option(feature, text):
     return None, text
 
 
+WORD_LIMIT = 3000
+
+
+def trim_words(text, limit=None):
+    """Return (text cut after `limit` words, whether it was cut)."""
+    limit = limit or WORD_LIMIT
+    for i, m in enumerate(re.finditer(r"\S+", text), 1):
+        if i == limit + 1:
+            return text[:m.start()].rstrip(), True
+    return text, False
+
+
+def enforce_limit(b):
+    if len(b.text) > WORD_LIMIT:
+        cut, trimmed = trim_words(b.text)
+        if trimmed:
+            b.document = Document(cut, len(cut))
+            view["limit_hit"] = time.time()
+
+
+def word_count(text):
+    return len(text.split())
+
+
 def start_job(feature, text):
     if "\n" not in text and os.path.isfile(text):
         text = open(text, encoding="utf-8", errors="replace").read()
+    text, trimmed = trim_words(text)
+    if trimmed:
+        add(Text(f"Input trimmed to the first {WORD_LIMIT:,} words.", style="yellow"))
     option, text = parse_option(feature, text)
     if not text:
         add(Text(f"Mode: {MODE_NAMES.get(feature, feature)}. Type your text and press Enter.", style="dim"))
@@ -296,6 +430,41 @@ def open_picker(title, items, on_select):
     bump()
 
 
+def unique_path(p):
+    i = 2
+    cand = p
+    while cand.exists():
+        cand = p.with_name(f"{p.stem}-{i}{p.suffix}")
+        i += 1
+    return cand
+
+
+def install_files(dest):
+    files = state["files"]
+    base = Path(os.path.expanduser(str(dest).strip().strip('"')))
+    is_file = len(files) == 1 and (base.suffix or base.name.startswith(".")) and not base.is_dir()
+    try:
+        for fname, text in files:
+            target = unique_path((base if is_file else base / fname).absolute())
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text + chr(10), encoding="utf-8")
+            add(Text(f"Installed to {target}", style="green"))
+    except OSError as e:
+        add(Text(f"Could not install there: {e}", style="red"))
+
+
+def open_install(rest=""):
+    if not state["files"]:
+        return add(Text("Nothing to install yet. Run a feature first, like /enhanceprompt or /aiskill.", style="yellow"))
+    if rest:
+        return install_files(rest)
+    home = Path.home()
+    spots = [("This folder", Path.cwd()), ("Desktop", home / "Desktop"), ("Downloads", home / "Downloads"), ("Documents", home / "Documents")]
+    items = [(f"   {name:<12}{path}", str(path)) for name, path in spots if path.is_dir()]
+    names = ", ".join(f for f, _ in state["files"])
+    open_picker(f"Install {names} to... (or type /install <any folder>)", items, install_files)
+
+
 def set_model(m):
     state["model"] = m
     add(Text(f"Model set to {m}", style="dim"))
@@ -306,14 +475,36 @@ def set_theme(t):
     bump()
 
 
+TEAM = "Grow A Garden Trading Hub"
+DEVELOPERS = ["Carlos Alcantara", "Zian Kyle Piangco", "Paulo Mendoza", "Joshua Enriquez"]
+
+
+def show_developers():
+    def build():
+        t = Text(justify="center")
+        t.append("LARP\n", style=f"bold {BLUE}")
+        t.append("Local AI Refinement Platform\n\n", style="dim")
+        t.append("TEAM\n", style="dim")
+        t.append(f"{TEAM}\n\n", style=f"bold {BLUE}")
+        t.append("DEVELOPERS\n", style="dim")
+        for name in DEVELOPERS:
+            t.append("- ", style=BLUE)
+            t.append(f"{name}\n", style="bold")
+        t.rstrip()
+        return Panel(Align.center(t), title="Developers", border_style=BLUE, padding=(1, 4))
+    add(build)
+
+
 def show_help():
-    t = Text()
-    for cmd, _, desc, _a in COMMANDS:
-        t.append(f"/{cmd:<15}", style="bold green")
-        t.append(desc + "\n")
-    t.append("\nEnter sends, Ctrl+J = new line, PgUp/PgDn scroll, Ctrl+C cancels.\n", style="dim")
-    t.append("Tip: /humanize casual|professional <text>  and  /aiskill SKILL.md|CLAUDE.md|.cursorrules <text>", style="dim")
-    add(Panel(t, title="Commands", border_style="green"))
+    def build():
+        t = Text()
+        for cmd, _, desc, _a in COMMANDS:
+            t.append(f"/{cmd:<15}", style=f"bold {BLUE}")
+            t.append(desc + "\n")
+        t.append("\nEnter sends, Ctrl+J = new line, Tab completes, PgUp/PgDn scroll, Ctrl+C cancels.\n", style="dim")
+        t.append("Tip: /humanize casual|professional <text>  and  /aiskill SKILL.md|CLAUDE.md|.cursorrules <text>", style="dim")
+        return Panel(t, title="Commands", border_style=BLUE)
+    add(build)
 
 
 def run_command(action, rest):
@@ -335,7 +526,7 @@ def run_command(action, rest):
             return add(Text("Nothing to save yet.", style="yellow"))
         name = rest or state["fname"] or "output.md"
         open(name, "w", encoding="utf-8").write(state["result"])
-        add(Text(f"Saved to {name}", style="green"))
+        add(Text(f"Saved to {os.path.abspath(name)}", style="green"))
     elif action == "retry":
         if state["last"]:
             f, t, o = state["last"]
@@ -344,8 +535,11 @@ def run_command(action, rest):
             bump()
         else:
             add(Text("Nothing to retry yet.", style="yellow"))
+    elif action == "install":
+        open_install(rest)
     elif action == "clear":
         log.clear()
+        seg_cache.clear()
         bump()
     elif action == "model":
         try:
@@ -359,9 +553,12 @@ def run_command(action, rest):
         if rest.lower() in THEMES:
             return set_theme(rest.lower())
         open_picker("Choose theme", [((" * " if t == state["theme"] else "   ") + t, t) for t in THEMES], set_theme)
+    elif action == "developers":
+        show_developers()
     elif action == "help":
         show_help()
     elif action == "quit":
+        state["close_terminal"] = True
         APP.exit()
 
 
@@ -391,7 +588,7 @@ def logo_fragments():
 class Placeholder(Processor):
     def apply_transformation(self, ti):
         if ti.lineno == 0 and not ti.document.text:
-            return Transformation([("class:placeholder", PLACEHOLDER)])
+            return Transformation([("class:placeholder", f"{PLACEHOLDER}  (max {WORD_LIMIT:,} words)")])
         return Transformation(ti.fragments)
 
 
@@ -405,7 +602,8 @@ def spacer_w():
 
 def build_app():
     global APP
-    buf = Buffer(multiline=True)
+    buf = Buffer(multiline=True, on_text_changed=enforce_limit)
+    view["buf"] = buf
     sel = [0]
     has_log = Condition(lambda: bool(log))
     no_log = Condition(lambda: not log)
@@ -425,6 +623,22 @@ def build_app():
             ("class:dim", " · "), ("class:model", state["model"]), ("class:dim", "  local / LARP"),
         ])
 
+    def counter_parts():
+        n = word_count(buf.text)
+        if not n:
+            return None
+        full = n >= WORD_LIMIT or time.time() - view.get("limit_hit", 0) < 3
+        style = "class:bad" if full else ("class:busy" if n >= WORD_LIMIT * 0.9 else "class:dim")
+        return style, f"{n:,} / {WORD_LIMIT:,} words" + ("  limit reached" if full else "") + "  "
+
+    def counter_line():
+        parts = counter_parts()
+        return FormattedText([parts] if parts else [])
+
+    def counter_width():
+        parts = counter_parts()
+        return Dimension.exact(len(parts[1]) if parts else 0)
+
     def status_line():
         if state["busy"]:
             return FormattedText([("class:busy", "● working...")])
@@ -437,8 +651,9 @@ def build_app():
             out += [("class:foot.key", "ctrl+c"), ("class:foot.dim", " cancel")]
         else:
             if log:
-                out += [("class:foot.key", "pgup/pgdn"), ("class:foot.dim", " scroll  ")]
-            out += [("class:foot.key", "/"), ("class:foot.dim", " commands")]
+                out += [("class:foot.key", "wheel/pgup/pgdn"), ("class:foot.dim", " scroll  ")]
+            out += [("class:foot.key", "tab"), ("class:foot.dim", " switch mode  "),
+                    ("class:foot.key", "/"), ("class:foot.dim", " commands")]
         return FormattedText(out)
 
     def popup():
@@ -456,11 +671,13 @@ def build_app():
 
     inner = HSplit([
         Window(height=1, style="class:box"),
-        Window(BufferControl(buf, input_processors=[Placeholder()]), wrap_lines=True, style="class:box",
+        Window(PasteBuffer(buf, input_processors=[HighlightSelectionProcessor(), Placeholder()]), wrap_lines=True, style="class:box",
+               right_margins=[ScrollbarMargin(display_arrows=False)],
                height=lambda: Dimension(min=1, max=8, preferred=max(1, buf.document.line_count))),
         Window(height=1, style="class:box"),
         VSplit([
             Window(FormattedTextControl(mode_line), height=1, style="class:box"),
+            Window(FormattedTextControl(counter_line), height=1, width=counter_width, align=WindowAlign.RIGHT, style="class:box"),
             Window(FormattedTextControl(status_line), height=1, width=22, align=WindowAlign.RIGHT, style="class:box"),
         ]),
         Window(height=1, style="class:box"),
@@ -474,11 +691,13 @@ def build_app():
     footer = Window(FormattedTextControl(footer_right), height=1, align=WindowAlign.RIGHT)
     column = HSplit([box, popup_box, footer], width=Dimension(min=40, max=COL_W, preferred=COL_W))
 
-    log_window = Window(FormattedTextControl(log_text, get_cursor_position=log_cursor, show_cursor=False),
+    log_window = Window(LogControl(log_text, get_cursor_position=log_cursor, show_cursor=False),
+                        right_margins=[ScrollbarMargin(display_arrows=False)],
                         width=Dimension(min=40, max=COL_W, preferred=COL_W))
+    view["win"] = log_window
     splash = ConditionalContainer(HSplit([
         spacer(2),
-        Window(FormattedTextControl(logo_fragments), height=LOGO_HEIGHT, align=WindowAlign.CENTER),
+        Window(PasteText(logo_fragments), height=LOGO_HEIGHT, align=WindowAlign.CENTER),
         Window(height=2),
     ]), filter=no_log)
     log_area = ConditionalContainer(VSplit([spacer_w(), log_window, spacer_w()]), filter=has_log)
@@ -515,23 +734,78 @@ def build_app():
             submit("/" + value)
         sel[0] = 0
 
+    selecting = Condition(lambda: buf.selection_state is not None)
+
+    @kb.add("c-a")
+    def _(e):
+        buf.exit_selection()
+        buf.cursor_position = 0
+        buf.start_selection(selection_type=SelectionType.CHARACTERS)
+        buf.cursor_position = len(buf.text)
+
+    @kb.add("backspace", filter=selecting, eager=True)
+    @kb.add("c-h", filter=selecting, eager=True)
+    @kb.add("delete", filter=selecting, eager=True)
+    def _(e):
+        buf.cut_selection()
+
+    @kb.add("<any>", filter=selecting)
+    def _(e):
+        data = e.data
+        if len(data) == 1 and data.isprintable():
+            buf.cut_selection()
+            buf.insert_text(data)
+
+    def move_clearing(action):
+        def handler(e):
+            buf.exit_selection()
+            action()
+        return handler
+
+    kb.add("left", filter=selecting)(move_clearing(lambda: buf.cursor_left()))
+    kb.add("right", filter=selecting)(move_clearing(lambda: buf.cursor_right()))
+    kb.add("up", filter=selecting)(move_clearing(lambda: buf.cursor_up()))
+    kb.add("down", filter=selecting)(move_clearing(lambda: buf.cursor_down()))
+
+    @kb.add("escape", filter=selecting, eager=True)
+    def _(e):
+        buf.exit_selection()
+
     @kb.add("c-j")
     def _(e):
         buf.insert_text("\n")
 
+    def cycle(step):
+        def handler(e):
+            if not state["busy"]:
+                state["mode"] = FEATURE_ACTIONS[(FEATURE_ACTIONS.index(state["mode"]) + step) % len(FEATURE_ACTIONS)]
+        return handler
+
+    kb.add("tab")(cycle(1))
+    kb.add("s-tab")(cycle(-1))
+
+    def move(step):
+        sel[0] = (sel[0] + step) % len(items())
+
     @kb.add("up", filter=visible)
+    @kb.add("s-tab", filter=visible)
     def _(e):
-        sel[0] = max(0, sel[0] - 1)
+        move(-1)
 
     @kb.add("down", filter=visible)
     def _(e):
-        sel[0] = min(len(items()) - 1, sel[0] + 1)
+        move(1)
 
-    @kb.add("tab", filter=visible)
-    def _(e):
-        if not state["picker"]:
-            buf.text = "/" + items()[sel[0]][1] + " "
-            buf.cursor_position = len(buf.text)
+    def complete(e):
+        if state["picker"]:
+            return move(1)
+        buf.document = Document("/" + items()[sel[0]][1] + " ")
+        buf.cursor_position = len(buf.text)
+        sel[0] = 0
+
+    kb.add("tab", filter=visible)(complete)
+    kb.add("c-i", filter=visible)(complete)
+    kb.add("right", filter=visible & Condition(lambda: not state["picker"] and buf.cursor_position >= len(buf.text)))(complete)
 
     @kb.add("escape", filter=visible)
     def _(e):
@@ -540,11 +814,19 @@ def build_app():
 
     @kb.add("pageup")
     def _(e):
-        state["scroll"] += 10
+        scroll_by(max(3, view_height() - 2))
 
     @kb.add("pagedown")
     def _(e):
-        state["scroll"] = max(0, state["scroll"] - 10)
+        scroll_by(-max(3, view_height() - 2))
+
+    @kb.add("c-up")
+    def _(e):
+        scroll_by(1)
+
+    @kb.add("c-down")
+    def _(e):
+        scroll_by(-1)
 
     @kb.add("c-c")
     def _(e):
@@ -558,7 +840,7 @@ def build_app():
         e.app.exit()
 
     APP = Application(layout=Layout(root, focused_element=buf), key_bindings=kb,
-                      style=DynamicStyle(lambda: STYLE), full_screen=True, refresh_interval=0.25)
+                      style=DynamicStyle(lambda: STYLE), full_screen=True, mouse_support=True, refresh_interval=0.25)
     return APP
 
 
@@ -575,6 +857,8 @@ def main():
         return
     state["online"] = ai.is_online()
     build_app().run()
+    if state.get("close_terminal"):
+        terminal.close_terminal()
 
 
 if __name__ == "__main__":

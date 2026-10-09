@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "larp-ai"
+version = "0.3.0"
+description = "LARP: offline, menu-driven AI toolbox powered by local Ollama models"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["rich", "prompt_toolkit", "pyperclip"]
+
+[project.scripts]
+larp = "larp.app:main"
+
+[tool.setuptools]
+packages = ["larp"]
+
+[tool.setuptools.package-data]
+larp = ["prompts/*.txt"]
