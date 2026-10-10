@@ -88,26 +88,91 @@ python -m larp
 
 ---
 
-## Command Reference
+## Core Features & Prompting Guide
 
-| Command | Shortcut | Purpose | Output |
-|---|---|---|---|
-| `/enhanceprompt` | `/enhance` | Expands vague prompts into production-grade instructions | Refined prompt with structure |
-| `/projectspec` | `/spec` | Turns a raw project concept into a functional specification | `SPEC.md` |
-| `/architect` | `/plan` | Generates system topologies, tech stack blueprints, and data models | `ARCHITECTURE.md` |
-| `/aiskill` | `/skill` | Compiles reusable AI coding rules (`SKILL.md`, `CLAUDE.md`, `.cursorrules`) | IDE agent rules |
-| `/humanize` | `/human` | Rewrites mechanical AI outputs into natural human voice | Refined text + colored diff |
-| `/fixgrammar` | `/grammar` | Fixes spelling, punctuation, and syntax without altering intent | Corrected text + colored diff |
-| `/auto` | `/pipeline` | Runs the full 4-stage chained pipeline from a single prompt | All 4 markdown docs |
-| `/install` | `/export` | Installs generated artifacts directly to a chosen project folder | Saves files to disk |
-| `/model` | `/models` | Switches between locally installed Ollama models | Changes active LLM |
-| `/theme` | `/color` | Switches terminal UI themes (green, blue, purple, red, orange) | Dynamic re-theme |
-| `/copy` | - | Copies the most recent result directly to your clipboard | System clipboard |
-| `/save` | - | Saves the most recent result to a specified file | Local file |
-| `/clear` | `/cls` | Clears terminal display buffer | Clean viewport |
-| `/developers` | `/team` | Displays team roster and credits | Credits panel |
-| `/help` | `/?` | Opens the command reference panel | Reference modal |
-| `/quit` | `/exit` | Exits the application and cleanly terminates the terminal session | Exit |
+LARP provides 8 core developer workflows. You can trigger them either by selecting them with `Tab` mode switching, typing the slash command, or using one-shot CLI execution.
+
+### 1. Enhance Prompt (`/enhanceprompt` or `/enhance`)
+Transforms brief or underspecified instructions into production-grade prompts containing clear system roles, contextual constraints, technical requirements, and output schemas.
+- **How to prompt:** Give your raw, rough idea or a one-line request.
+- **Example:**
+  ```text
+  /enhanceprompt build an asynchronous job queue worker in python with redis
+  ```
+
+### 2. Project Specification (`/projectspec` or `/spec`)
+Expands a high-level product concept into a structured functional specification (`SPEC.md`) complete with user stories, technical requirements, acceptance criteria, and edge-case handling.
+- **How to prompt:** State the product name, core purpose, and key functional requirements.
+- **Example:**
+  ```text
+  /projectspec offline markdown note-taking desktop application with local fuzzy search and sqlite storage
+  ```
+
+### 3. Architecture Blueprint (`/architect` or `/plan`)
+Generates comprehensive software system architectures (`ARCHITECTURE.md`) detailing component topology, data models, API boundaries, technology stack trade-offs, and security posture.
+- **How to prompt:** Describe the system, target scale, and requirements or constraints.
+- **Example:**
+  ```text
+  /architect distributed event-driven payment processing backend using golang, postgresql, and kafka
+  ```
+
+### 4. AI Skill & Rules Compiler (`/aiskill` or `/skill`)
+Compiles project conventions into standardized AI coding rulebooks for modern developer IDEs. Supports output formatting for `SKILL.md` (Antigravity), `CLAUDE.md` (Claude Code), and `.cursorrules` (Cursor/Windsurf).
+- **How to prompt:** State the rules or prefix with the target format (`SKILL.md`, `CLAUDE.md`, or `.cursorrules`).
+- **Examples:**
+  ```text
+  /aiskill enforce conventional commits, strict typescript types, and zero any policy
+  /aiskill .cursorrules mobile-first responsive styling with vanilla css and no external frameworks
+  ```
+
+### 5. Humanize Text (`/humanize` or `/human`)
+Rewrites stiff, bureaucratic, or machine-generated text into a natural human voice. Displays an inline colored diff highlighting word removals in red and additions in green.
+- **How to prompt:** Paste the text directly, or prefix with a tone choice (`casual` or `professional`).
+- **Examples:**
+  ```text
+  /humanize Our revolutionary paradigm shift synergizes cross-functional workflows to maximize velocity.
+  /humanize professional We are pleased to announce our updated platform capabilities for enterprise clients.
+  ```
+
+### 6. Grammar & Syntax Fixer (`/fixgrammar` or `/grammar`)
+Corrects typographical errors, punctuation mistakes, and awkward grammatical phrasing while strictly preserving the author's original meaning and technical terms. Shows an inline diff.
+- **How to prompt:** Paste text or code comments containing errors.
+- **Example:**
+  ```text
+  /fixgrammar The users doesnt receives there confirmation emails when they registers yesterday.
+  ```
+
+### 7. Full Automated Pipeline (`/auto` or `/pipeline`)
+LARP's end-to-end orchestration command. Feeds a single concept sequentially through all four technical stages: **Enhance Prompt -> Project Spec -> Architecture -> Skill Rules**. Streams all four stages live and automatically saves the resulting files into `larp_output/`.
+- **How to prompt:** Provide a single-sentence product or system concept.
+- **Example:**
+  ```text
+  /auto lightweight peer-to-peer file transfer CLI tool in rust with end-to-end encryption
+  ```
+
+### 8. Project Artifact Installer (`/install` or `/export`)
+Installs the generated output files directly into a target folder on your filesystem (e.g. current project root, Desktop, Documents, or any custom path) with automatic collision protection.
+- **How to use:**
+  ```text
+  /install
+  /install ./my-project
+  ```
+
+---
+
+## Utility Commands
+
+| Command | Shortcut | Purpose |
+|---|---|---|
+| `/copy` | - | Copies the most recent result to your system clipboard |
+| `/save` | - | Saves the most recent result to a specified file name |
+| `/retry` | `/again` | Re-executes the last operation |
+| `/clear` | `/cls` | Clears the terminal output log |
+| `/model` | `/models` | Opens interactive picker to switch installed Ollama models |
+| `/theme` | `/color` | Cycles or picks color themes (green, blue, purple, red, orange) |
+| `/developers` | `/team` | Displays the developer roster and team credits |
+| `/help` | `/?` | Shows the quick command reference panel |
+| `/quit` | `/exit` | Exits the application and closes the terminal session |
 
 ---
 
